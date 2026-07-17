@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+/* Tokens do protótipo (AplicaAI.dc.html). Espelhados em src/lib/design/tokens.ts. */
+@theme {
+  --color-bg: #fbfaf7;
+  --color-surface: #ffffff;
+  --color-column: #f5f3ee;
+  --color-subtle: #f1efea;
+  --color-border: #e7e5df;
+  --color-border2: #d8d5cd;
+  --color-border3: #c9c6bf;
+  --color-ink: #14161a;
+  --color-text2: #2a2d33;
+  --color-muted: #6b7076;
+  --color-faint: #9a9ea3;
+  --color-pine: #10855f;
+  --color-pine-dark: #0c6a4b;
+  --color-pine-tint: #e7f3ee;
+  --color-amber: #c77a16;
+  --color-blue: #3a6ea5;
+  --color-plum: #7d5ba6;
+  --color-clay: #b0563a;
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-display: var(--font-cabinet-grotesk), sans-serif;
+
+  --shadow-card: 0 1px 2px rgba(20, 22, 26, 0.04), 0 6px 16px rgba(20, 22, 26, 0.03);
+  --shadow-flat: 0 1px 2px rgba(20, 22, 26, 0.04);
+  --shadow-ink: 0 1px 2px rgba(20, 22, 26, 0.06), 0 8px 24px rgba(20, 22, 26, 0.1);
+  --shadow-hover: 0 4px 14px rgba(20, 22, 26, 0.08);
+  --shadow-drawer: -12px 0 40px rgba(20, 22, 26, 0.12);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+textarea,
+input,
+button {
+  font-family: inherit;
+}
+
+textarea {
+  resize: none;
+}
+
+::selection {
+  background: var(--color-pine-tint);
+}
+
+/* --- Animações (protótipo, linhas 22-32) --- */
+@keyframes vpSettle {
+  0% {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+@keyframes vpTick {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes vpSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+@keyframes vpPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes vpDrawer {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.vp-settle {
+  animation: vpSettle 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.vp-row-in {
+  animation: vpTick 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.vp-drawer {
+  animation: vpDrawer 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.vp-pulse {
+  animation: vpPulse 1.2s ease-in-out infinite;
+}
+.vp-sweep {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, var(--color-pine), transparent);
+  animation: vpSweep 1.1s linear infinite;
+}
+
+.vp-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.vp-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-settle,
+  .vp-row-in,
+  .vp-sweep,
+  .vp-drawer,
+  .vp-pulse {
+    animation: none !important;
+  }
+}
