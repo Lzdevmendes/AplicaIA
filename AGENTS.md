@@ -37,7 +37,11 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict · Tailwind 
   ali filtra `user_id` na mão. Nunca importar de client component.
 - **`getUser()`, nunca `getSession()`** para decidir acesso — `getSession()` só
   lê o cookie, que o cliente forja.
-- **Não parsear PDF nem rodar OCR**: o Gemini lê PDF e imagem nativamente.
+- **Não parsear PDF nem rodar OCR**: o Gemini lê PDF e imagem nativamente. A
+  **única exceção** é `src/lib/cv/pdf-links.ts`, que varre só a camada de
+  anotação de hyperlink (o `/URI` por trás de ícones "GitHub"/"LinkedIn") — a
+  única coisa que o Gemini comprovadamente não enxerga. Completa os links
+  vazios, não substitui a leitura. Não estender isso para conteúdo/OCR.
 - **Métricas são calculadas** pela view `application_metrics`, nunca fixas.
 
 ## Banco

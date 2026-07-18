@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { gemini, MODEL, toGeminiSchema, withRetry } from "@/lib/ai/gemini";
 import { CV_PARSE_SYSTEM, CV_PARSE_USER } from "@/lib/ai/prompts";
 import { ProfileSchema, stripEmptyScalars, type ParseEvent } from "@/lib/ai/schemas";
+import { extractPdfLinkAnnotations } from "@/lib/cv/pdf-links";
 
 export const maxDuration = 120;
 
@@ -46,7 +47,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const base64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
+  const pdfBuffer = Buffer.from(await blob.arrayBuffer());
+  const base64 = pdfBuffer.toString("base64");
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -108,11 +110,20 @@ export async function POST(request: NextRequest) {
           return;
         }
 
+        // O Gemini não lê a camada de hyperlink do PDF: se o CV traz github/
+        // linkedin como ícone clicável, o modelo devolve vazio. Completamos com
+        // as URLs embutidas nas anotações — só quando o modelo não achou.
+        const profile = parsed.data;
+        const links = extractPdfLinkAnnotations(pdfBuffer);
+        if (!profile.github.trim() && links.github) profile.github = links.github;
+        if (!profile.linkedin.trim() && links.linkedin) profile.linkedin = links.linkedin;
+        if (!profile.website.trim() && links.website) profile.website = links.website;
+
         // Transacional: ou o perfil inteiro é trocado, ou nada muda.
         // stripEmptyScalars: o CV grava só o que achou; o que não veio (github,
         // links) fica preservado se a pessoa já tinha preenchido à mão.
         const { error: saveError } = await supabase.rpc("replace_profile", {
-          p_profile: stripEmptyScalars(parsed.data),
+          p_profile: stripEmptyScalars(profile),
         });
         if (saveError) throw saveError;
 
