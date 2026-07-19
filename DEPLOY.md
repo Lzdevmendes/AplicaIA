@@ -1,106 +1,123 @@
 # Deploy — AplicaAI
 
-Guia do que precisa ser configurado por fora para colocar no ar. O código está
-pronto; o que falta são credenciais e serviços que só você tem acesso.
+Roteiro para colocar no ar e o estado atual. O código está pronto e verificado;
+o que resta é configuração em painéis (Google, Supabase, Vercel) e o prazo da
+verificação OAuth do Google.
 
-## Estado atual
+## Coordenadas do projeto
 
-| Fase | Construído | Verificado |
-|---|---|---|
-| Fundação (Next 16, Supabase, design, auth) | ✅ | ✅ rodando |
-| Onboarding + Perfil | ✅ | ✅ exceto a chamada ao Gemini (sem chave) |
-| Nova candidatura | ✅ | ✅ exceto as chamadas ao Gemini |
-| Tracker | ✅ | ✅ inclusive métricas e persistência |
-| Tarefas | ✅ | ✅ inclusive drawer, subtarefas, cor |
-| Gmail | ✅ | ✅ MIME e deep link; envio real depende do Google |
+| Recurso | Valor |
+|---|---|
+| Repositório | `github.com/Lzdevmendes/AplicaIA` |
+| Deploy (produção) | `https://aplica-ia.vercel.app` (projeto Vercel `aplica-ia`) |
+| Supabase | `aplicaai` = `plxzmbvoelasnwotozxi`, região `sa-east-1` |
+| Google Cloud | projeto `AplicaIA`, cliente OAuth "AplicaAI Web" |
+| `GOOGLE_CLIENT_ID` | `986438591485-56742mlivuuo3h5j2qgr8vr8sbnt3n2b.apps.googleusercontent.com` (público) |
 
-**Banco:** projeto Supabase `aplicaai` (`plxzmbvoelasnwotozxi`), região `sa-east-1`.
-Schema, RLS e otimizações já aplicados. RLS testada com forja entre usuários.
+## Estado atual (checklist mestre)
 
-## 1. Secrets no `.env.local` (dev) e na Vercel (prod)
+- [x] **Fase 1 — Deploy na Vercel** com as 8 env vars e `TOKEN_ENCRYPTION_KEY` de produção
+- [ ] **Fase 2 — OAuth de produção** (Site URL + Redirect no Supabase)
+- [x] **Fase 3a — Página de privacidade** (`/privacidade`, com declaração de Uso Limitado do Google)
+- [ ] **Fase 3b — Submeter a verificação OAuth do Google** (2 a 8 semanas)
+- [ ] **Fase 4 — Ligar o envio automático** (`GMAIL_SEND_MODE=api`) quando a verificação sair
+- [ ] **Fase 5 — Observabilidade** (Sentry nas rotas `/api/*`)
+- [ ] **Fase 6 — Antes de abrir ao público** (apagar dev user, Leaked Password Protection)
+
+O app já funciona em produção em modo **deeplink** (o botão "Enviar pelo Gmail"
+abre um rascunho pronto; o usuário anexa o CV e envia). O envio automático com o
+CV anexado só liga na Fase 4.
+
+---
+
+## Fase 1 — Deploy na Vercel ✅ feito
+
+Referência do que foi cadastrado (Project Settings > Environment Variables).
+`SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `GOOGLE_CLIENT_SECRET` e
+`TOKEN_ENCRYPTION_KEY` **nunca** com prefixo `NEXT_PUBLIC_` — não podem vazar
+para o browser.
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://plxzmbvoelasnwotozxi.supabase.co   # já preenchido
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...                    # já preenchido
-SUPABASE_SERVICE_ROLE_KEY=                # Supabase > Settings > API Keys > service_role
-GEMINI_API_KEY=                           # aistudio.google.com > Get API key (grátis)
-GOOGLE_CLIENT_ID=                         # ver passo 3
-GOOGLE_CLIENT_SECRET=                     # ver passo 3
-TOKEN_ENCRYPTION_KEY=                     # openssl rand -base64 32 (cifra o refresh token)
-NEXT_PUBLIC_GMAIL_SEND_MODE=deeplink      # trocar para "api" só após o passo 4
+NEXT_PUBLIC_SUPABASE_URL=https://plxzmbvoelasnwotozxi.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_...          # Supabase > Settings > API Keys > secret key
+GEMINI_API_KEY=...                               # aistudio.google.com > Get API key (grátis)
+GOOGLE_CLIENT_ID=986438591485-...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-...
+TOKEN_ENCRYPTION_KEY=...                          # openssl rand -base64 32 (NOVA em prod, ≠ da dev)
+NEXT_PUBLIC_GMAIL_SEND_MODE=deeplink              # vira "api" só na Fase 4
 ```
 
-> ⚠️ Gere um `TOKEN_ENCRYPTION_KEY` **novo e diferente** para produção
-> (`openssl rand -base64 32`). Se ele mudar depois que houver tokens gravados,
-> os refresh tokens já cifrados ficam ilegíveis e os usuários precisam
-> reconectar o Google. Guarde-o como qualquer segredo.
+> ⚠️ A `TOKEN_ENCRYPTION_KEY` de produção é **diferente** da de dev, de
+> propósito. Se ela mudar depois que houver refresh tokens gravados, eles ficam
+> ilegíveis e os usuários precisam reconectar o Google. Guarde-a como segredo.
 
-Na Vercel, cadastrar tudo em Project Settings > Environment Variables. O
-`SUPABASE_SERVICE_ROLE_KEY` e o `GEMINI_API_KEY` **nunca** com prefixo
-`NEXT_PUBLIC_` — eles não podem vazar para o browser.
+**Modelo de IA:** `gemini-2.5-flash` (tier gratuito, lê PDF e imagem
+nativamente). Limite de requisições por minuto/dia — suficiente para você e os
+primeiros usuários. A IA está isolada em `src/lib/ai/gemini.ts` e nas 3 rotas,
+então trocar de tier/modelo é local.
 
-## 2. Google Gemini (os fluxos de IA)
+## Fase 2 — OAuth de produção ⬜ pendente
 
-Só colar a `GEMINI_API_KEY` (pegue grátis em aistudio.google.com > Get API key).
-Depois disso, para fechar a verificação (tarefa interna B1/B2/B3): subir o CV de
-teste em `onboarding`, conferir o perfil extraído, e colar uma vaga real em
-`nova` conferindo o match e o e-mail.
+O login passa pela Supabase, então o essencial é configurar lá.
 
-Modelo em uso: `gemini-2.5-flash` — tier gratuito, lê PDF e imagem nativamente.
-O tier free tem limite de requisições por minuto/dia (suficiente pra você e os
-primeiros usuários). Se escalar, dá para subir para um tier pago ou trocar de
-modelo — a IA está isolada em `src/lib/ai/gemini.ts` e nas 3 rotas.
+1. **Supabase > Authentication > URL Configuration**
+   (`.../project/plxzmbvoelasnwotozxi/auth/url-configuration`):
+   - **Site URL:** `https://aplica-ia.vercel.app`
+   - **Redirect URLs:** adicionar `https://aplica-ia.vercel.app/auth/callback`
+     (manter o `http://localhost:3000/auth/callback` do dev).
+2. **Google Cloud Console** (conferência): o Google redireciona para o callback
+   da Supabase, já cadastrado
+   (`https://plxzmbvoelasnwotozxi.supabase.co/auth/v1/callback`). Não precisa
+   mexer.
+3. **Testar:** abrir `https://aplica-ia.vercel.app/login` e entrar com Google.
+   Como seu e-mail já é usuário de teste, deve logar. Confirmar no banco que o
+   refresh token foi gravado (cifrado) em `google_accounts`.
 
-## 3. Google OAuth (login + Gmail)
+## Fase 3 — Verificação OAuth do Google (o gargalo de prazo)
 
-O login já é Google, e o mesmo consentimento pede o escopo `gmail.send`.
+O escopo `gmail.send` é **sensitive** (não restricted — não exige a auditoria
+CASA). Sem a verificação, o Google limita a 100 usuários em "modo de teste" e
+mostra a tela de "app não verificado".
 
-1. **Google Cloud Console** > APIs & Services > Credentials > Create OAuth 2.0
-   Client ID (Web application).
-   - Authorized redirect URIs:
-     - `https://plxzmbvoelasnwotozxi.supabase.co/auth/v1/callback` (Supabase)
-     - `http://localhost:3000/auth/callback` (dev)
-     - `https://SEU_DOMINIO/auth/callback` (prod)
-2. Habilitar a **Gmail API** no projeto do Google Cloud.
-3. Tela de consentimento OAuth: adicionar o escopo
-   `https://www.googleapis.com/auth/gmail.send`.
-4. **Supabase** > Authentication > Providers > Google: colar o Client ID e o
-   Secret.
-5. `.env.local`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+- **3a ✅** Página de privacidade pública em `/privacidade` (pré-requisito da
+  submissão), com a declaração de que o uso dos dados das APIs do Google segue a
+  Política de Dados do Usuário, incluindo Uso Limitado. Linkada no rodapé do
+  login.
+- **3b ⬜** Google Cloud Console > **Tela de permissão OAuth** > **Publicar app**
+  e submeter a verificação. O Google vai pedir: URL da home
+  (`https://aplica-ia.vercel.app`), URL da política
+  (`https://aplica-ia.vercel.app/privacidade`), domínio autorizado, justificativa
+  do escopo `gmail.send` e um vídeo curto do fluxo. Leva de 2 a 8 semanas e
+  **não bloqueia** — o app roda em `deeplink` enquanto isso.
 
-## 4. Verificação OAuth do Google (o gargalo de prazo)
+## Fase 4 — Ligar o envio automático ⬜ (após a verificação)
 
-O escopo `gmail.send` é **sensitive**. Sem a verificação do app, o Google limita
-a 100 usuários em "modo de teste" e mostra a tela de "app não verificado".
+Na Vercel, trocar `NEXT_PUBLIC_GMAIL_SEND_MODE` de `deeplink` para `api` e
+redeployar. A partir daí o envio é automático, com o CV anexado.
 
-- **Abra a verificação assim que possível** — leva de 2 a 8 semanas e não
-  bloqueia nada: enquanto isso, o app funciona com `NEXT_PUBLIC_GMAIL_SEND_MODE=deeplink`
-  (abre um rascunho pronto no Gmail, o usuário anexa o CV e envia).
-- `gmail.send` é sensitive, **não** restricted — não exige a auditoria de
-  segurança CASA.
-- Quando a verificação sair, trocar `NEXT_PUBLIC_GMAIL_SEND_MODE` para `api`.
-  A partir daí o envio é automático, com o CV anexado.
+## Fase 5 — Observabilidade ⬜ pendente
 
-## 5. Antes de abrir ao público
+Criar projeto no Sentry (ou similar), pegar o **DSN** e plugar nas rotas
+`/api/*`. É código — pode ser feito a qualquer momento.
 
-- [ ] Apagar o usuário de dev do banco: `dev@aplicaai.test`
-      (id `33333333-3333-3333-3333-333333333333`) e seus dados de seed.
-- [ ] Supabase > Auth > URL Configuration: setar o Site URL e os Redirect URLs
-      para o domínio de produção.
+## Fase 6 — Antes de abrir ao público ⬜ pendente
+
+- [ ] Apagar o usuário de dev e o seed:
+      `delete from auth.users where id = '33333333-3333-3333-3333-333333333333';`
+      (as tabelas por usuário caem em cascade).
 - [ ] Supabase > Auth > Providers: habilitar **Leaked Password Protection**
-      (advisor sinalizou; baixa relevância porque o login é só Google, mas é um
-      toggle grátis).
-- [ ] `refresh_token` do Google é cifrado em repouso (AES-256-GCM, chave em
-      `TOKEN_ENCRYPTION_KEY`) além de estar em tabela service-role-only. Gere a
-      chave de produção com `openssl rand -base64 32` e não a perca.
-- [ ] Observabilidade: plugar Sentry (ou similar) nas rotas `/api/*`.
+      (toggle grátis; baixa relevância porque o login é só Google).
+- [ ] Confirmar o Site URL de produção (Fase 2) e revisar os Redirect URLs.
 
-## 6. Deploy na Vercel
+---
+
+## Banco
+
+Schema, RLS e otimizações já aplicados no projeto Supabase, e a RLS testada com
+forja entre usuários. Para reaplicar as migrations num projeto novo:
 
 ```bash
-# Conectar o repo na Vercel (ou vercel --prod pela CLI).
-# As migrations do banco já foram aplicadas no projeto Supabase.
-# Para reaplicar num projeto novo:
 supabase link --project-ref SEU_REF
 supabase db push
 ```
@@ -114,7 +131,7 @@ npm run dev        # localhost:3000
 npm run build      # tem que passar sem warning
 npm run typecheck
 npm run lint
-npm test           # vitest — helpers puros (MIME, deep link, retry, schemas, datas)
+npm test           # vitest — helpers puros (MIME, deep link, retry, schemas, datas, pdf-links)
 
 # Testes de RLS (isolamento entre usuários) — precisam de conexão ao Postgres:
 psql "$DATABASE_URL" -f supabase/tests/rls_isolation.test.sql
