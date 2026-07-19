@@ -76,6 +76,13 @@ export default function LoginPage() {
           >
             Política de Privacidade
           </Link>
+          {" · "}
+          <Link
+            href="/termos"
+            className="underline underline-offset-2 hover:text-muted transition-colors"
+          >
+            Termos de Serviço
+          </Link>
         </p>
       </div>
     </main>

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { EditableProfileSchema, type EditableProfile } from "@/lib/ai/edit-schema";
 import type { Json } from "@/lib/db/types";
 
@@ -28,5 +28,44 @@ export async function saveProfile(profile: EditableProfile) {
   if (error) return { error: error.message };
 
   revalidatePath("/perfil");
+  return { ok: true };
+}
+
+/**
+ * Exclusão de conta self-service (direito de exclusão da LGPD).
+ *
+ * Precisa do admin client (service_role): um usuário não apaga a própria linha
+ * em auth.users pela RLS. Deletar o usuário dispara o cascade que limpa todas as
+ * tabelas por usuário, incluindo google_accounts (revoga o acesso ao Gmail). O
+ * Storage NÃO cai no cascade — os CVs são apagados na mão antes.
+ */
+export async function deleteAccount() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "não autenticado" };
+
+  const admin = createAdminClient();
+
+  try {
+    // 1. Apaga os arquivos do usuário no bucket cvs (cvs/<user_id>/*).
+    const { data: files } = await admin.storage.from("cvs").list(user.id);
+    if (files && files.length > 0) {
+      await admin.storage
+        .from("cvs")
+        .remove(files.map((f) => `${user.id}/${f.name}`));
+    }
+
+    // 2. Apaga o usuário — cascade limpa perfil, candidaturas, tarefas,
+    //    google_accounts e o resto das tabelas por usuário.
+    const { error } = await admin.auth.admin.deleteUser(user.id);
+    if (error) throw error;
+  } catch (err) {
+    console.error("[deleteAccount]", err);
+    return { error: "Falha ao apagar a conta. Tente de novo." };
+  }
+
+  await supabase.auth.signOut();
   return { ok: true };
 }

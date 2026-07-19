@@ -156,12 +156,18 @@ export default function PrivacidadePage() {
           </p>
         </Secao>
 
-        <div className="mt-12 pt-6 border-t border-border">
+        <div className="mt-12 pt-6 border-t border-border flex items-center gap-4">
           <Link
             href="/login"
             className="text-[13px] text-muted hover:text-ink transition-colors"
           >
             ← Voltar para o login
+          </Link>
+          <Link
+            href="/termos"
+            className="text-[13px] text-muted hover:text-ink transition-colors"
+          >
+            Termos de Serviço
           </Link>
         </div>
       </article>

@@ -33,8 +33,11 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict · Tailwind 
 - **RLS é a fronteira de segurança**, não a UI. Toda tabela por usuário tem
   policy `auth.uid() = user_id`. Mudou schema, roda `get_advisors` e testa com
   dois usuários.
-- **`createAdminClient()` ignora RLS.** Só para `google_accounts`. Toda query
-  ali filtra `user_id` na mão. Nunca importar de client component.
+- **`createAdminClient()` ignora RLS.** Usos permitidos: `google_accounts` e a
+  exclusão de conta (`deleteAccount` em `perfil/actions.ts` — `auth.admin.deleteUser`
+  + limpeza do Storage, porque o usuário não apaga a própria linha em `auth.users`
+  pela RLS). Toda query ali filtra `user_id` na mão. Nunca importar de client
+  component.
 - **`getUser()`, nunca `getSession()`** para decidir acesso — `getSession()` só
   lê o cookie, que o cliente forja.
 - **Não parsear PDF nem rodar OCR**: o Gemini lê PDF e imagem nativamente. A
@@ -49,9 +52,10 @@ Next.js 16 (App Router, Turbopack) · React 19 · TypeScript strict · Tailwind 
 Projeto Supabase `aplicaai` (`plxzmbvoelasnwotozxi`), região `sa-east-1`.
 Migrations em `supabase/migrations/`. Tipos gerados: `npm run db:types`.
 
-`google_accounts` e `task_counters` têm RLS ligada e **zero policies** de
-propósito: só o service_role acessa. O advisor aponta isso como INFO — é
-esperado, não regredir "consertando".
+`google_accounts`, `task_counters` e `rate_limits` têm RLS ligada e **zero
+policies** de propósito: só o service_role e as RPCs `SECURITY DEFINER` acessam
+(`rate_limits` via `check_rate_limit`, ver `src/lib/ratelimit.ts`). O advisor
+aponta isso como INFO — é esperado, não regredir "consertando".
 
 Chaves `AP-NN` são atribuídas pelo trigger `assign_task_key` (SECURITY DEFINER,
 porque `task_counters` é fechada para `authenticated`).
