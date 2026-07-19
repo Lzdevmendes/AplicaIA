@@ -66,7 +66,7 @@ export function SkillMatch({
           Cole a vaga ao lado e clique em gerar. O match aparece aqui.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-x-[26px] gap-y-[7px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-[26px] gap-y-[7px]">
           {skills.map((s, i) => (
             <div
               key={`${s.name}-${i}`}

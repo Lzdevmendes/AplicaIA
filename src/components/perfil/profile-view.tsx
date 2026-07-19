@@ -66,7 +66,7 @@ export function ProfileView({ profile }: { profile: EditableProfile }) {
       )}
 
       {(education.length > 0 || certifications.length > 0) && (
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <Card>
             <CardLabel>Formação</CardLabel>
             <div className="flex flex-col gap-3.5">
@@ -115,7 +115,7 @@ export function ProfileView({ profile }: { profile: EditableProfile }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <Card>
           <CardLabel>Preferências</CardLabel>
           <div className="flex flex-col gap-2.5 text-[13.5px]">

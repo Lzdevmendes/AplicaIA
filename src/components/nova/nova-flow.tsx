@@ -215,7 +215,7 @@ export function NovaFlow({
     (tab === "paste" ? jobText.trim().length > 20 : !!image);
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-6 items-start">
       {/* ESQUERDA: entrada da vaga */}
       <div className="bg-surface border border-border rounded-lg shadow-card overflow-hidden">
         <div className="flex gap-0.5 p-1.5 border-b border-border bg-bg">
@@ -449,7 +449,7 @@ function EmailCard({
         </div>
       )}
 
-      <div className="px-5 py-3.5 border-t border-border bg-bg flex items-center gap-2.5">
+      <div className="px-5 py-3.5 border-t border-border bg-bg flex flex-wrap items-center gap-2.5">
         <button
           onClick={onRegenerate}
           className="border border-border bg-surface rounded-lg px-3.5 py-[11px] text-[13px] font-medium text-ink cursor-pointer flex items-center gap-[7px] hover:border-border3 transition-colors"

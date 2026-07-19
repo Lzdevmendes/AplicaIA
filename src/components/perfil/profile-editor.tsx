@@ -56,16 +56,16 @@ export function ProfileEditor({ initial }: { initial: EditableProfile }) {
   }
 
   return (
-    <section className="px-10 pt-[34px] pb-[60px] max-w-[820px] mx-auto">
+    <section className="px-5 sm:px-10 pt-6 sm:pt-[34px] pb-[60px] max-w-[820px] mx-auto">
       <header className="mb-[26px]">
         <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-muted mb-2">
           AplicaAI · Perfil
         </div>
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-xl bg-ink text-pine-tint flex items-center justify-center font-display font-extrabold text-[22px]">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="w-14 h-14 rounded-xl bg-ink text-pine-tint flex items-center justify-center font-display font-extrabold text-[22px] flex-none">
             {initials(mode === "edit" ? draft.full_name : initial.full_name)}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="font-display font-extrabold text-[28px] tracking-[-0.01em] m-0 truncate">
               {(mode === "edit" ? draft.full_name : initial.full_name) || "Seu perfil"}
             </h1>
@@ -76,7 +76,7 @@ export function ProfileEditor({ initial }: { initial: EditableProfile }) {
             )}
           </div>
 
-          <div className="ml-auto flex items-center gap-2.5">
+          <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2.5">
             {mode === "view" ? (
               <>
                 <button

@@ -62,7 +62,7 @@ export default async function TarefasPage() {
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
 
   return (
-    <section className="px-10 pt-[34px] pb-12">
+    <section className="px-5 sm:px-10 pt-6 sm:pt-[34px] pb-12">
       <PageHeader eyebrow="Tarefas" title="Sua semana de busca">
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2 border border-border bg-surface rounded-lg px-3 py-2 shadow-flat">
@@ -78,8 +78,8 @@ export default async function TarefasPage() {
       </PageHeader>
 
       {tasks.length > 0 && (
-        <div className="flex items-center gap-[22px] border border-border bg-surface rounded-lg px-5 py-4 mb-[22px] shadow-flat">
-          <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-[22px] border border-border bg-surface rounded-lg px-5 py-4 mb-[22px] shadow-flat">
+          <div className="flex-1 min-w-[220px]">
             <div className="flex items-baseline justify-between mb-[9px]">
               <span className="font-mono text-[11px] tracking-[0.08em] uppercase text-muted">
                 Progresso da sprint

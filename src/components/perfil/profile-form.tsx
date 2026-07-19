@@ -27,7 +27,7 @@ export function ProfileForm({
           <Field label="Nome">
             <input className={inputCls} value={draft.full_name} onChange={(e) => set("full_name", e.target.value)} />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Headline">
               <input className={inputCls} value={draft.headline} onChange={(e) => set("headline", e.target.value)} placeholder="Desenvolvedor back-end · Pleno" />
             </Field>
@@ -65,7 +65,7 @@ export function ProfileForm({
           addLabel="Adicionar experiência"
           render={(row, update) => (
             <>
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <input className={inputCls} placeholder="Cargo" value={row.role} onChange={(e) => update({ ...row, role: e.target.value })} />
                 <input className={inputCls} placeholder="Empresa" value={row.company} onChange={(e) => update({ ...row, company: e.target.value })} />
               </div>
@@ -76,7 +76,7 @@ export function ProfileForm({
         />
       </Card>
 
-      <div className="grid grid-cols-2 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <Card>
           <CardLabel>Formação</CardLabel>
           <RowsEditor
@@ -111,7 +111,7 @@ export function ProfileForm({
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <Card>
           <CardLabel>Preferências</CardLabel>
           <div className="flex flex-col gap-3">

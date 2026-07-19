@@ -37,7 +37,7 @@ export default async function TrackerPage() {
   ];
 
   return (
-    <section className="px-10 pt-[34px] pb-12">
+    <section className="px-5 sm:px-10 pt-6 sm:pt-[34px] pb-12">
       <header className="mb-6">
         <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-muted mb-2">
           AplicaAI · Tracker
@@ -46,11 +46,11 @@ export default async function TrackerPage() {
           Suas candidaturas
         </h1>
 
-        <div className="flex border border-border rounded-lg bg-surface overflow-hidden w-fit shadow-flat">
+        <div className="vp-scroll flex border border-border rounded-lg bg-surface overflow-x-auto w-full sm:w-fit shadow-flat">
           {metrics.map((mt) => (
             <div
               key={mt.label}
-              className="px-[26px] py-4"
+              className="px-4 sm:px-[26px] py-4 flex-none"
               style={{ borderLeft: mt.first ? "none" : "1px solid var(--color-border)" }}
             >
               <div className="font-mono text-[26px] font-semibold text-ink leading-none">

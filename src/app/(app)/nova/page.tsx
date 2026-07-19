@@ -35,7 +35,7 @@ export default async function NovaCandidaturaPage() {
     process.env.NEXT_PUBLIC_GMAIL_SEND_MODE === "api" ? "api" : "deeplink";
 
   return (
-    <section className="px-10 pt-[34px] pb-12 max-w-[1320px] mx-auto">
+    <section className="px-5 sm:px-10 pt-6 sm:pt-[34px] pb-12 max-w-[1320px] mx-auto">
       <PageHeader
         eyebrow="Nova candidatura"
         title="Transforme a vaga em um e-mail pronto"

@@ -14,7 +14,7 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="flex items-end justify-between gap-6 mb-6">
+    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 mb-6">
       <div>
         <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-muted mb-2">
           AplicaAI · {eyebrow}

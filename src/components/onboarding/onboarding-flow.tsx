@@ -31,7 +31,7 @@ export function OnboardingFlow() {
   }
 
   return (
-    <section className="min-h-screen flex items-center justify-center p-10">
+    <section className="min-h-screen flex items-center justify-center p-6 sm:p-10">
       <div className="w-full max-w-[560px] text-center">
         <div className="font-mono text-[11px] tracking-[0.16em] uppercase text-muted mb-3.5">
           Bem-vindo ao AplicaAI
