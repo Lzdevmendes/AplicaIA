@@ -26,7 +26,6 @@ SUPABASE_SERVICE_ROLE_KEY=                # Supabase > Settings > API Keys > ser
 GEMINI_API_KEY=                           # aistudio.google.com > Get API key (grátis)
 GOOGLE_CLIENT_ID=                         # ver passo 3
 GOOGLE_CLIENT_SECRET=                     # ver passo 3
-GOOGLE_REDIRECT_URI=https://SEU_DOMINIO/auth/callback
 TOKEN_ENCRYPTION_KEY=                     # openssl rand -base64 32 (cifra o refresh token)
 NEXT_PUBLIC_GMAIL_SEND_MODE=deeplink      # trocar para "api" só após o passo 4
 ```
