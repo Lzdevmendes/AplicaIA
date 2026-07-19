@@ -3,9 +3,12 @@ import { EmailSchema } from "@/lib/ai/job-schemas";
 import { EMAIL_GENERATE_SYSTEM } from "@/lib/ai/prompts";
 import { loadProfileContext } from "@/lib/db/profile";
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimits, RateLimitError, AI_LIMITS } from "@/lib/ratelimit";
 import { NextResponse, type NextRequest } from "next/server";
 
 export const maxDuration = 60;
+
+const MAX_JOB_BYTES = 60_000; // o objeto job extraído nunca chega perto disso
 
 /**
  * Gera o e-mail de candidatura a partir do perfil + vaga + match.
@@ -23,6 +26,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "não autenticado" }, { status: 401 });
   }
 
+  try {
+    await enforceRateLimits(supabase, AI_LIMITS);
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return NextResponse.json(
+        { error: "Muitas requisições. Aguarde um instante e tente de novo." },
+        { status: 429 },
+      );
+    }
+    throw err;
+  }
+
   const body = await request.json().catch(() => null);
   const job = body?.job;
   if (!job || typeof job.company !== "string") {
@@ -30,6 +45,9 @@ export async function POST(request: NextRequest) {
       { error: "dados da vaga ausentes" },
       { status: 400 },
     );
+  }
+  if (JSON.stringify(job).length > MAX_JOB_BYTES) {
+    return NextResponse.json({ error: "Dados da vaga muito grandes." }, { status: 413 });
   }
 
   const profile = await loadProfileContext(supabase, user.id);
@@ -103,7 +121,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("[email/generate]", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "falha ao gerar o e-mail" },
+      { error: "Falha ao gerar o e-mail. Tente de novo." },
       { status: 500 },
     );
   }

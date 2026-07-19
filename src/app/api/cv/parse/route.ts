@@ -4,6 +4,7 @@ import { gemini, MODEL, toGeminiSchema, withRetry } from "@/lib/ai/gemini";
 import { CV_PARSE_SYSTEM, CV_PARSE_USER } from "@/lib/ai/prompts";
 import { ProfileSchema, stripEmptyScalars, type ParseEvent } from "@/lib/ai/schemas";
 import { extractPdfLinkAnnotations } from "@/lib/cv/pdf-links";
+import { enforceRateLimits, RateLimitError, AI_LIMITS } from "@/lib/ratelimit";
 
 export const maxDuration = 120;
 
@@ -23,6 +24,18 @@ export async function POST(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: "não autenticado" }, { status: 401 });
+  }
+
+  try {
+    await enforceRateLimits(supabase, AI_LIMITS);
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return NextResponse.json(
+        { error: "Muitas requisições. Aguarde um instante e tente de novo." },
+        { status: 429 },
+      );
+    }
+    throw err;
   }
 
   const { path } = await request.json().catch(() => ({ path: null }));
@@ -131,10 +144,7 @@ export async function POST(request: NextRequest) {
         send({ type: "done" });
       } catch (err) {
         console.error("[cv/parse]", err);
-        send({
-          type: "error",
-          message: err instanceof Error ? err.message : "falha ao processar o CV",
-        });
+        send({ type: "error", message: "Falha ao processar o CV. Tente de novo." });
       } finally {
         controller.close();
       }

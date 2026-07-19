@@ -319,6 +319,27 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          bucket: string
+          count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          bucket?: string
+          count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       skill_matches: {
         Row: {
           application_id: string
@@ -580,6 +601,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_rate_limit: {
+        Args: { p_bucket: string; p_max: number; p_window_seconds: number }
+        Returns: boolean
+      }
       replace_profile: { Args: { p_profile: Json }; Returns: undefined }
     }
     Enums: {

@@ -7,6 +7,7 @@ import {
   sendGmail,
   type EmailAttachment,
 } from "@/lib/google/gmail";
+import { enforceRateLimits, RateLimitError, SEND_LIMITS } from "@/lib/ratelimit";
 
 export const maxDuration = 60;
 
@@ -24,6 +25,18 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "não autenticado" }, { status: 401 });
+  }
+
+  try {
+    await enforceRateLimits(supabase, SEND_LIMITS);
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return NextResponse.json(
+        { error: "Limite de envios atingido. Tente mais tarde." },
+        { status: 429 },
+      );
+    }
+    throw err;
   }
 
   const body = await request.json().catch(() => null);
@@ -99,7 +112,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("[email/send]", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "falha ao enviar" },
+      { error: "Falha ao enviar o e-mail. Tente de novo." },
       { status: 500 },
     );
   }
