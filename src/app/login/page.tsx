@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { LogoMark } from "@/components/ui/icons";
 
@@ -35,7 +36,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-10 bg-bg">
+    <main className="min-h-screen flex items-center justify-center p-6 sm:p-10 bg-bg">
       <div className="w-full max-w-[440px] text-center">
         <div className="w-12 h-12 rounded-[11px] bg-ink flex items-center justify-center mx-auto mb-6">
           <LogoMark size={24} />
@@ -67,6 +68,14 @@ export default function LoginPage() {
 
         <p className="text-xs text-faint leading-[1.5] mt-[18px]">
           Seus dados são privados. Você pode apagar tudo quando quiser.
+        </p>
+        <p className="text-xs text-faint leading-[1.5] mt-2">
+          <Link
+            href="/privacidade"
+            className="underline underline-offset-2 hover:text-muted transition-colors"
+          >
+            Política de Privacidade
+          </Link>
         </p>
       </div>
     </main>
