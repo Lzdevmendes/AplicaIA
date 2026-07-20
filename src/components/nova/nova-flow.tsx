@@ -25,6 +25,11 @@ const IMAGE_MEDIA = ["image/png", "image/jpeg", "image/webp", "image/gif"];
  * JSON — por exemplo a página de erro da plataforma quando a função excede o
  * tempo limite — evita o "Unexpected token" e devolve uma mensagem limpa.
  */
+/** Remove caracteres de controle (byte nulo etc.), preservando quebras de linha. */
+function cleanText(s: string): string {
+  return s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+}
+
 async function readJson(res: Response): Promise<Record<string, unknown>> {
   const text = await res.text();
   try {
@@ -101,7 +106,8 @@ export function NovaFlow({
       const generated = await readJson(emailRes);
       if (!emailRes.ok) throw new Error((generated.error as string) ?? "falha ao gerar o e-mail");
 
-      setEmail(generated as GeneratedEmail);
+      const gen = generated as unknown as GeneratedEmail;
+      setEmail({ subject: cleanText(gen.subject), body: cleanText(gen.body) });
       setPhase("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "algo deu errado");
