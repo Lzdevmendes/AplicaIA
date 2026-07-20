@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { IconUpload } from "@/components/ui/icons";
+import { detectDocType, DOC_ACCEPT } from "@/lib/cv/doc-types";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -20,8 +21,8 @@ export function CvDropzone({
     setLocalError(null);
     if (!file) return;
 
-    if (file.type !== "application/pdf") {
-      setLocalError("Por enquanto só PDF. DOCX chega em breve.");
+    if (!detectDocType(file.name, file.type)) {
+      setLocalError("Aceitamos PDF e DOCX. Para .doc antigo, salve como PDF.");
       return;
     }
     if (file.size > MAX_BYTES) {
@@ -40,7 +41,7 @@ export function CvDropzone({
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf"
+        accept={DOC_ACCEPT}
         className="hidden"
         onChange={(e) => accept(e.target.files?.[0])}
       />
@@ -71,7 +72,7 @@ export function CvDropzone({
           Arraste seu CV ou clique para escolher
         </div>
         <div className="font-mono text-[11.5px] text-faint">
-          PDF · até 10 MB
+          PDF ou DOCX · até 10 MB
         </div>
       </button>
 

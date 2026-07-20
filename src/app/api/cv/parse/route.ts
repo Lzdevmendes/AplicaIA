@@ -1,9 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
+import mammoth from "mammoth";
 import { createClient } from "@/lib/supabase/server";
-import { gemini, MODEL, toGeminiSchema, withRetry } from "@/lib/ai/gemini";
+import { gemini, MODEL, toGeminiSchema, withRetry, type Part } from "@/lib/ai/gemini";
 import { CV_PARSE_SYSTEM, CV_PARSE_USER } from "@/lib/ai/prompts";
 import { ProfileSchema, stripEmptyScalars, type ParseEvent } from "@/lib/ai/schemas";
 import { extractPdfLinkAnnotations } from "@/lib/cv/pdf-links";
+import { detectDocType } from "@/lib/cv/doc-types";
 import { enforceRateLimits, RateLimitError, AI_LIMITS } from "@/lib/ratelimit";
 
 export const maxDuration = 120;
@@ -60,8 +62,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const pdfBuffer = Buffer.from(await blob.arrayBuffer());
-  const base64 = pdfBuffer.toString("base64");
+  const fileBuffer = Buffer.from(await blob.arrayBuffer());
+  const docType = detectDocType(path, blob.type);
+  if (!docType) {
+    return NextResponse.json({ error: "tipo de arquivo não suportado" }, { status: 400 });
+  }
+
+  // Monta a entrada para o Gemini. PDF vai inline — o modelo lê nativamente,
+  // texto e layout. DOCX é um zip binário que o modelo não interpreta, então
+  // extraímos o texto com mammoth e mandamos como texto puro.
+  let parts: Part[];
+  try {
+    if (docType === "pdf") {
+      parts = [
+        { inlineData: { mimeType: "application/pdf", data: fileBuffer.toString("base64") } },
+        { text: CV_PARSE_USER },
+      ];
+    } else {
+      const { value: text } = await mammoth.extractRawText({ buffer: fileBuffer });
+      if (!text.trim()) {
+        return NextResponse.json(
+          { error: "Não consegui ler o texto do DOCX." },
+          { status: 422 },
+        );
+      }
+      parts = [{ text: `${CV_PARSE_USER}\n\n---\n${text}` }];
+    }
+  } catch (err) {
+    console.error("[cv/parse] preparo do documento", err);
+    return NextResponse.json({ error: "Falha ao ler o documento." }, { status: 400 });
+  }
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -78,15 +108,7 @@ export async function POST(request: NextRequest) {
               responseMimeType: "application/json",
               responseJsonSchema: toGeminiSchema(ProfileSchema),
             },
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  { inlineData: { mimeType: "application/pdf", data: base64 } },
-                  { text: CV_PARSE_USER },
-                ],
-              },
-            ],
+            contents: [{ role: "user", parts }],
           }),
         );
 
@@ -125,12 +147,14 @@ export async function POST(request: NextRequest) {
 
         // O Gemini não lê a camada de hyperlink do PDF: se o CV traz github/
         // linkedin como ícone clicável, o modelo devolve vazio. Completamos com
-        // as URLs embutidas nas anotações — só quando o modelo não achou.
+        // as URLs embutidas nas anotações — só para PDF e só quando não achou.
         const profile = parsed.data;
-        const links = extractPdfLinkAnnotations(pdfBuffer);
-        if (!profile.github.trim() && links.github) profile.github = links.github;
-        if (!profile.linkedin.trim() && links.linkedin) profile.linkedin = links.linkedin;
-        if (!profile.website.trim() && links.website) profile.website = links.website;
+        if (docType === "pdf") {
+          const links = extractPdfLinkAnnotations(fileBuffer);
+          if (!profile.github.trim() && links.github) profile.github = links.github;
+          if (!profile.linkedin.trim() && links.linkedin) profile.linkedin = links.linkedin;
+          if (!profile.website.trim() && links.website) profile.website = links.website;
+        }
 
         // Transacional: ou o perfil inteiro é trocado, ou nada muda.
         // stripEmptyScalars: o CV grava só o que achou; o que não veio (github,

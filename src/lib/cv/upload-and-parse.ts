@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { OnboardingStepKey, ParseEvent } from "@/lib/ai/schemas";
+import { detectDocType, DOC_CONTENT_TYPE } from "@/lib/cv/doc-types";
 
 /**
  * Sobe o CV ao Storage, atualiza cv_files e dispara o parse (SSE), reportando
@@ -18,12 +19,16 @@ export async function uploadAndParseCv(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Sessão expirada. Entre de novo.");
 
-  // A primeira pasta é o user_id — é o que a policy do bucket checa.
-  const path = `${user.id}/${crypto.randomUUID()}.pdf`;
+  const docType = detectDocType(file.name, file.type);
+  if (!docType) throw new Error("Aceitamos PDF e DOCX.");
+
+  // A primeira pasta é o user_id — é o que a policy do bucket checa. A extensão
+  // reflete o tipo real, e é por ela que a rota de parse decide como ler.
+  const path = `${user.id}/${crypto.randomUUID()}.${docType}`;
 
   const { error: uploadError } = await supabase.storage
     .from("cvs")
-    .upload(path, file, { contentType: "application/pdf" });
+    .upload(path, file, { contentType: DOC_CONTENT_TYPE[docType] });
   if (uploadError) throw new Error(`falha no upload: ${uploadError.message}`);
 
   // O CV anexado no e-mail é sempre o corrente; o índice parcial
