@@ -85,6 +85,9 @@ export async function POST(request: NextRequest) {
           systemInstruction: EMAIL_GENERATE_SYSTEM,
           responseMimeType: "application/json",
           responseJsonSchema: toGeminiSchema(EmailSchema),
+          // Desliga o raciocínio do flash novo — sem isto a chamada estoura o
+          // tempo da função na Vercel (ver rota cv/parse).
+          thinkingConfig: { thinkingBudget: 0 },
         },
         contents: [
           {

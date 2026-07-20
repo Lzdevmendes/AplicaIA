@@ -20,6 +20,25 @@ type Tab = "paste" | "print";
 
 const IMAGE_MEDIA = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
+/**
+ * Lê a resposta como JSON com segurança. Se o servidor devolver algo que não é
+ * JSON — por exemplo a página de erro da plataforma quando a função excede o
+ * tempo limite — evita o "Unexpected token" e devolve uma mensagem limpa.
+ */
+async function readJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    const slow = res.status === 504 || res.status === 502 || res.status === 408;
+    return {
+      error: slow
+        ? "A geração demorou demais e foi interrompida. Tente de novo."
+        : "Algo deu errado no servidor. Tente de novo.",
+    };
+  }
+}
+
 export function NovaFlow({
   cv,
   sendMode,
@@ -70,8 +89,8 @@ export function NovaFlow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(extractBody),
       });
-      const extracted = await extractRes.json();
-      if (!extractRes.ok) throw new Error(extracted.error ?? "falha ao ler a vaga");
+      const extracted = await readJson(extractRes);
+      if (!extractRes.ok) throw new Error((extracted.error as string) ?? "falha ao ler a vaga");
       setJob(extracted as JobExtraction);
 
       const emailRes = await fetch("/api/email/generate", {
@@ -79,8 +98,8 @@ export function NovaFlow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ job: extracted }),
       });
-      const generated = await emailRes.json();
-      if (!emailRes.ok) throw new Error(generated.error ?? "falha ao gerar o e-mail");
+      const generated = await readJson(emailRes);
+      if (!emailRes.ok) throw new Error((generated.error as string) ?? "falha ao gerar o e-mail");
 
       setEmail(generated as GeneratedEmail);
       setPhase("done");
@@ -191,9 +210,9 @@ export function NovaFlow({
         body: email.body,
       }),
     });
-    const out = await res.json();
+    const out = await readJson(res);
     if (!res.ok) {
-      setError(out.error ?? "falha ao enviar pelo Gmail");
+      setError((out.error as string) ?? "falha ao enviar pelo Gmail");
       return;
     }
     setSaved(true);

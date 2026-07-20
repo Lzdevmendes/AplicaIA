@@ -107,6 +107,10 @@ export async function POST(request: NextRequest) {
               systemInstruction: CV_PARSE_SYSTEM,
               responseMimeType: "application/json",
               responseJsonSchema: toGeminiSchema(ProfileSchema),
+              // O flash mais novo (gemini-flash-latest) raciocina por padrão, o
+              // que deixa a chamada lenta e estoura o tempo da função na Vercel.
+              // Desligar o thinking mantém a extração dentro do limite.
+              thinkingConfig: { thinkingBudget: 0 },
             },
             contents: [{ role: "user", parts }],
           }),

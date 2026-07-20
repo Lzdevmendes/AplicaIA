@@ -82,6 +82,9 @@ export async function POST(request: NextRequest) {
           systemInstruction: jobExtractSystem(profile.skills),
           responseMimeType: "application/json",
           responseJsonSchema: toGeminiSchema(JobExtractionSchema),
+          // Desliga o raciocínio do flash novo — sem isto a chamada estoura o
+          // tempo da função na Vercel (ver gemini.ts / rota cv/parse).
+          thinkingConfig: { thinkingBudget: 0 },
         },
         contents: [{ role: "user", parts }],
       }),
