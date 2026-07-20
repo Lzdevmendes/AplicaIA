@@ -13,12 +13,12 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { TASK_STATUSES, TASK_COLORS, type TaskStatus } from "@/lib/design/tokens";
-import { moveTask } from "@/app/(app)/tarefas/actions";
+import { TASK_STATUSES, TASK_COLORS, type TaskStatus, type TaskColor } from "@/lib/design/tokens";
+import { moveTask, createTask } from "@/app/(app)/tarefas/actions";
 import { IconPlus, IconCalendar, IconChecklist } from "@/components/ui/icons";
 import { TaskDrawer } from "./task-drawer";
 import { priorityStyle, PRIORITY_LABEL, labelStyle, dueLabel } from "./task-styles";
-import type { TaskDetail } from "./types";
+import type { TaskDetail, TaskPriority } from "./types";
 
 const COLUMN_ORDER: TaskStatus[] = ["backlog", "todo", "doing", "done"];
 
@@ -34,6 +34,32 @@ export function TaskBoard({ initial }: { initial: TaskDetail[] }) {
 
   const byStatus = (s: TaskStatus) => tasks.filter((t) => t.status === s);
   const open = tasks.find((t) => t.id === openId) ?? null;
+
+  async function addTask(status: TaskStatus, title: string) {
+    const res = await createTask(status, title);
+    if (res?.error || !res.task) return;
+    const t = res.task;
+    const created: TaskDetail = {
+      id: t.id,
+      key: t.key,
+      title: t.title,
+      status: t.status as TaskStatus,
+      color: t.color as TaskColor,
+      label: t.label,
+      priority: t.priority as TaskPriority,
+      due_at: t.due_at,
+      estimate: t.estimate,
+      description: t.description,
+      sprint_name: null,
+      linked_company: null,
+      linked_role: null,
+      subtasks: [],
+      tags: [],
+      activity: [],
+    };
+    setTasks((ts) => [...ts, created]);
+    router.refresh();
+  }
 
   function onDragStart(e: DragStartEvent) {
     setDragging(tasks.find((t) => t.id === e.active.id) ?? null);
@@ -72,6 +98,7 @@ export function TaskBoard({ initial }: { initial: TaskDetail[] }) {
               status={status}
               tasks={byStatus(status)}
               onOpen={setOpenId}
+              onAdd={addTask}
             />
           ))}
         </div>
@@ -96,13 +123,28 @@ function Column({
   status,
   tasks,
   onOpen,
+  onAdd,
 }: {
   status: TaskStatus;
   tasks: TaskDetail[];
   onOpen: (id: string) => void;
+  onAdd: (status: TaskStatus, title: string) => Promise<void>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const meta = TASK_STATUSES[status];
+  const [adding, setAdding] = useState(false);
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    const clean = title.trim();
+    if (!clean || saving) return;
+    setSaving(true);
+    await onAdd(status, clean);
+    setSaving(false);
+    setTitle("");
+    setAdding(false);
+  }
 
   return (
     <div
@@ -129,10 +171,34 @@ function Column({
         {tasks.map((task) => (
           <Card key={task.id} task={task} onOpen={onOpen} />
         ))}
-        <button className="border-[1.5px] border-dashed border-border2 bg-transparent rounded-lg p-2.5 text-xs text-faint cursor-pointer flex items-center justify-center gap-1.5 w-full hover:border-pine hover:text-pine transition-colors">
-          <IconPlus size={13} />
-          Adicionar
-        </button>
+        {adding ? (
+          <input
+            autoFocus
+            value={title}
+            disabled={saving}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submit();
+              if (e.key === "Escape") {
+                setTitle("");
+                setAdding(false);
+              }
+            }}
+            onBlur={() => {
+              if (!title.trim()) setAdding(false);
+            }}
+            placeholder="Título da tarefa e Enter"
+            className="w-full border border-pine bg-surface rounded-lg px-3 py-2 text-[13px] text-ink outline-none disabled:opacity-60"
+          />
+        ) : (
+          <button
+            onClick={() => setAdding(true)}
+            className="border-[1.5px] border-dashed border-border2 bg-transparent rounded-lg p-2.5 text-xs text-faint cursor-pointer flex items-center justify-center gap-1.5 w-full hover:border-pine hover:text-pine transition-colors"
+          >
+            <IconPlus size={13} />
+            Adicionar
+          </button>
+        )}
       </div>
     </div>
   );

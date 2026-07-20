@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui/page-header";
-import { IconPlus, IconChevronLeft, IconChevronRight } from "@/components/ui/icons";
 import { TaskBoard } from "@/components/tarefas/task-board";
 import type { TaskDetail } from "@/components/tarefas/types";
 import type { TaskColor, TaskStatus } from "@/lib/design/tokens";
@@ -63,19 +62,7 @@ export default async function TarefasPage() {
 
   return (
     <section className="px-5 sm:px-10 pt-6 sm:pt-[34px] pb-12">
-      <PageHeader eyebrow="Tarefas" title="Sua semana de busca">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-2 border border-border bg-surface rounded-lg px-3 py-2 shadow-flat">
-            <IconChevronLeft size={15} className="text-muted" />
-            <span className="font-mono text-xs text-ink font-medium">Sprint atual</span>
-            <IconChevronRight size={15} className="text-muted" />
-          </div>
-          <button className="bg-pine text-white border-none rounded-lg px-[15px] py-2.5 text-[13px] font-semibold cursor-pointer flex items-center gap-[7px] hover:bg-pine-dark transition-colors">
-            <IconPlus size={15} />
-            Nova tarefa
-          </button>
-        </div>
-      </PageHeader>
+      <PageHeader eyebrow="Tarefas" title="Sua semana de busca" />
 
       {tasks.length > 0 && (
         <div className="flex flex-wrap items-center gap-4 sm:gap-[22px] border border-border bg-surface rounded-lg px-5 py-4 mb-[22px] shadow-flat">
@@ -102,18 +89,13 @@ export default async function TarefasPage() {
         </div>
       )}
 
-      {tasks.length === 0 ? (
-        <div className="bg-surface border border-border rounded-lg shadow-flat px-8 py-11 text-center max-w-[440px]">
-          <div className="font-display font-bold text-[17px] mb-1.5">
-            Sua semana está vazia
-          </div>
-          <p className="text-[13px] text-muted leading-[1.55] m-0">
-            Crie tarefas para organizar sua busca — estudos, follow-ups, testes técnicos.
-          </p>
-        </div>
-      ) : (
-        <TaskBoard initial={tasks} />
+      {tasks.length === 0 && (
+        <p className="text-[13px] text-muted leading-[1.55] mb-4">
+          Sua semana está vazia. Crie tarefas nas colunas abaixo — estudos,
+          follow-ups, testes técnicos.
+        </p>
       )}
+      <TaskBoard initial={tasks} />
     </section>
   );
 }

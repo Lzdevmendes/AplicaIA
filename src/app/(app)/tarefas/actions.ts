@@ -16,6 +16,38 @@ async function authed() {
   return { supabase, user };
 }
 
+/**
+ * Cria uma tarefa na coluna indicada. A chave AP-NN é atribuída pelo trigger
+ * assign_task_key (passar key vazia dispara a atribuição). Devolve a linha
+ * criada para a UI inserir no board sem recarregar.
+ */
+export async function createTask(status: Status, title: string) {
+  if (!(status in TASK_STATUSES)) return { error: "status inválido" };
+  const clean = title.trim();
+  if (!clean) return { error: "título vazio" };
+  if (clean.length > 200) return { error: "título muito longo" };
+
+  const { supabase, user } = await authed();
+  if (!user) return { error: "não autenticado" };
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert({ user_id: user.id, title: clean, status, key: "" })
+    .select("id, key, title, status, color, label, priority, due_at, estimate, description")
+    .single();
+  if (error || !data) return { error: error?.message ?? "falha ao criar a tarefa" };
+
+  await supabase.from("task_activity").insert({
+    user_id: user.id,
+    task_id: data.id,
+    actor: "user",
+    text: "criou a tarefa",
+  });
+
+  revalidatePath("/tarefas");
+  return { ok: true, task: data };
+}
+
 /** Move a tarefa entre colunas do kanban e registra na atividade. */
 export async function moveTask(id: string, status: Status) {
   if (!(status in TASK_STATUSES)) return { error: "status inválido" };
