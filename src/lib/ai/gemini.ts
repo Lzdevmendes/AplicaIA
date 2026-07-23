@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, type ThinkingConfig } from "@google/genai";
 import { z } from "zod";
 
 /**
@@ -26,6 +26,17 @@ export function gemini() {
 }
 
 export const MODEL = "gemini-flash-latest";
+
+/**
+ * Nível de raciocínio de toda chamada. O flash novo raciocina por padrão, o que
+ * deixa a chamada lenta e estoura o tempo da função na Vercel; "low" mantém a
+ * extração da vaga e a geração do e-mail em ~1,5–2,5s.
+ *
+ * NÃO voltar para `thinkingBudget: 0`: o alias gemini-flash-latest migrou para
+ * o Gemini 3.x, que rejeita esse campo com 400 INVALID_ARGUMENT — foi o que
+ * derrubou as três rotas de IA em produção. O 3.x usa `thinkingLevel`.
+ */
+export const THINKING: ThinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
 
 /**
  * Repete a chamada em erros transitórios do tier gratuito.

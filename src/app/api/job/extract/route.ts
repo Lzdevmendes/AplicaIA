@@ -1,6 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { gemini, MODEL, toGeminiSchema, withRetry, type Part } from "@/lib/ai/gemini";
+import {
+  gemini,
+  MODEL,
+  THINKING,
+  toGeminiSchema,
+  withRetry,
+  type Part,
+} from "@/lib/ai/gemini";
 import { loadProfileContext } from "@/lib/db/profile";
 import {
   jobExtractSystem,
@@ -82,9 +89,7 @@ export async function POST(request: NextRequest) {
           systemInstruction: jobExtractSystem(profile.skills),
           responseMimeType: "application/json",
           responseJsonSchema: toGeminiSchema(JobExtractionSchema),
-          // Desliga o raciocínio do flash novo — sem isto a chamada estoura o
-          // tempo da função na Vercel (ver gemini.ts / rota cv/parse).
-          thinkingConfig: { thinkingBudget: 0 },
+          thinkingConfig: THINKING,
         },
         contents: [{ role: "user", parts }],
       }),
@@ -108,7 +113,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(parsed.data);
   } catch (err) {
-    console.error("[job/extract]", err);
+    // Ver o comentário em email/generate: o status do upstream vai no log.
+    console.error("[job/extract]", (err as { status?: number })?.status, err);
     return NextResponse.json(
       { error: "Falha ao ler a vaga. Tente de novo." },
       { status: 500 },

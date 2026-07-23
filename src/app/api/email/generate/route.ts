@@ -1,4 +1,4 @@
-import { gemini, MODEL, toGeminiSchema, withRetry } from "@/lib/ai/gemini";
+import { gemini, MODEL, THINKING, toGeminiSchema, withRetry } from "@/lib/ai/gemini";
 import { EmailSchema } from "@/lib/ai/job-schemas";
 import { EMAIL_GENERATE_SYSTEM } from "@/lib/ai/prompts";
 import { loadProfileContext } from "@/lib/db/profile";
@@ -85,9 +85,7 @@ export async function POST(request: NextRequest) {
           systemInstruction: EMAIL_GENERATE_SYSTEM,
           responseMimeType: "application/json",
           responseJsonSchema: toGeminiSchema(EmailSchema),
-          // Desliga o raciocínio do flash novo — sem isto a chamada estoura o
-          // tempo da função na Vercel (ver rota cv/parse).
-          thinkingConfig: { thinkingBudget: 0 },
+          thinkingConfig: THINKING,
         },
         contents: [
           {
@@ -122,7 +120,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(parsed.data);
   } catch (err) {
-    console.error("[email/generate]", err);
+    // O status do upstream vai junto: um 400 do Gemini (config inválida) some
+    // dentro da mensagem genérica e é o tipo de falha que passou despercebida.
+    console.error("[email/generate]", (err as { status?: number })?.status, err);
     return NextResponse.json(
       { error: "Falha ao gerar o e-mail. Tente de novo." },
       { status: 500 },

@@ -1,7 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import mammoth from "mammoth";
 import { createClient } from "@/lib/supabase/server";
-import { gemini, MODEL, toGeminiSchema, withRetry, type Part } from "@/lib/ai/gemini";
+import {
+  gemini,
+  MODEL,
+  THINKING,
+  toGeminiSchema,
+  withRetry,
+  type Part,
+} from "@/lib/ai/gemini";
 import { CV_PARSE_SYSTEM, CV_PARSE_USER } from "@/lib/ai/prompts";
 import { ProfileSchema, stripEmptyScalars, type ParseEvent } from "@/lib/ai/schemas";
 import { extractPdfLinkAnnotations } from "@/lib/cv/pdf-links";
@@ -107,10 +114,7 @@ export async function POST(request: NextRequest) {
               systemInstruction: CV_PARSE_SYSTEM,
               responseMimeType: "application/json",
               responseJsonSchema: toGeminiSchema(ProfileSchema),
-              // O flash mais novo (gemini-flash-latest) raciocina por padrão, o
-              // que deixa a chamada lenta e estoura o tempo da função na Vercel.
-              // Desligar o thinking mantém a extração dentro do limite.
-              thinkingConfig: { thinkingBudget: 0 },
+              thinkingConfig: THINKING,
             },
             contents: [{ role: "user", parts }],
           }),
@@ -171,7 +175,8 @@ export async function POST(request: NextRequest) {
         send({ type: "step", step: "profile" });
         send({ type: "done" });
       } catch (err) {
-        console.error("[cv/parse]", err);
+        // Ver o comentário em email/generate: o status do upstream vai no log.
+        console.error("[cv/parse]", (err as { status?: number })?.status, err);
         send({ type: "error", message: "Falha ao processar o CV. Tente de novo." });
       } finally {
         controller.close();
