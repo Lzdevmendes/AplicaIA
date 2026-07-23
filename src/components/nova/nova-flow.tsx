@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { gmailComposeUrl } from "@/lib/gmail/deeplink";
+import { toBase64 } from "@/lib/nova/to-base64";
 import { SkillMatch } from "./skill-match";
 import {
   IconSparkle,
@@ -12,6 +13,7 @@ import {
   IconDoc,
   IconEnvelope,
   IconImage,
+  IconClose,
 } from "@/components/ui/icons";
 import type { JobExtraction, GeneratedEmail } from "@/lib/ai/job-schemas";
 
@@ -19,6 +21,10 @@ type Phase = "input" | "generating" | "done";
 type Tab = "paste" | "print";
 
 const IMAGE_MEDIA = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
+// Base64 infla ~33%, e a rota corta em ~5 MB de base64 (MAX_IMAGE_B64 em
+// job/extract). 4 MB de arquivo cabe com folga e barra antes de converter.
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 /**
  * Lê a resposta como JSON com segurança. Se o servidor devolver algo que não é
@@ -54,7 +60,13 @@ export function NovaFlow({
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("paste");
   const [jobText, setJobText] = useState("");
-  const [image, setImage] = useState<{ base64: string; media: string; name: string } | null>(null);
+  const [image, setImage] = useState<{
+    base64: string;
+    media: string;
+    name: string;
+    size: number;
+  } | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   const [phase, setPhase] = useState<Phase>("input");
   const [job, setJob] = useState<JobExtraction | null>(null);
@@ -65,16 +77,18 @@ export function NovaFlow({
   const genLabel =
     phase === "generating" ? "Gerando…" : phase === "done" ? "Gerar de novo" : "Gerar e-mail";
 
-  async function pickImage(file: File | undefined) {
+  async function pickImage(file: File) {
     setError(null);
-    if (!file) return;
-    if (!IMAGE_MEDIA.includes(file.type)) {
-      setError("Print precisa ser PNG, JPG, WEBP ou GIF.");
-      return;
+    setImageError(null);
+    try {
+      const base64 = toBase64(await file.arrayBuffer());
+      setImage({ base64, media: file.type, name: file.name, size: file.size });
+    } catch (err) {
+      // Sem este catch a exceção sumia (o onChange não dava await) e o print
+      // simplesmente não aparecia, sem nenhuma pista para o usuário.
+      console.error("[nova] leitura do print", err);
+      setImageError("Não consegui ler esse print. Tente outro arquivo.");
     }
-    const buf = await file.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-    setImage({ base64, media: file.type, name: file.name });
   }
 
   async function generate() {
@@ -269,7 +283,16 @@ export function NovaFlow({
             <label className="font-mono text-[11px] tracking-[0.1em] uppercase text-muted block mb-2.5">
               Print da vaga
             </label>
-            <PrintDrop image={image} onPick={pickImage} />
+            <PrintDrop
+              image={image}
+              onPick={pickImage}
+              onClear={() => {
+                setImage(null);
+                setImageError(null);
+              }}
+              error={imageError}
+              onError={setImageError}
+            />
           </div>
         )}
 
@@ -386,29 +409,131 @@ function TabButton({
   );
 }
 
+/**
+ * Caixa do print. Mesmo padrão do CvDropzone do onboarding: ref para o input
+ * escondido, drag-and-drop e validação local antes de entregar o arquivo.
+ */
 function PrintDrop({
   image,
   onPick,
+  onClear,
+  error,
+  onError,
 }: {
-  image: { name: string } | null;
-  onPick: (f: File | undefined) => void;
+  image: { base64: string; media: string; name: string; size: number } | null;
+  onPick: (file: File) => void;
+  onClear: () => void;
+  error: string | null;
+  onError: (message: string | null) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  function accept(file: File | undefined) {
+    onError(null);
+    if (!file) return;
+
+    if (!IMAGE_MEDIA.includes(file.type)) {
+      onError("O print precisa ser PNG, JPG, WEBP ou GIF.");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      onError(
+        `O print tem ${(file.size / 1024 / 1024).toFixed(1)} MB. O limite é 4 MB.`,
+      );
+      return;
+    }
+    onPick(file);
+  }
+
   return (
-    <label className="h-[300px] border-[1.5px] border-dashed border-border2 rounded-lg flex flex-col items-center justify-center gap-3 bg-bg text-center px-6 cursor-pointer hover:border-pine transition-colors">
+    <>
       <input
+        ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={IMAGE_MEDIA.join(",")}
         className="hidden"
-        onChange={(e) => onPick(e.target.files?.[0])}
+        onChange={(e) => {
+          accept(e.target.files?.[0]);
+          // Zera o valor para que escolher o mesmo arquivo de novo (depois de
+          // um erro) volte a disparar o onChange.
+          e.target.value = "";
+        }}
       />
-      <IconImage size={34} />
-      <div className="text-sm font-medium">
-        {image ? image.name : "Arraste o print da vaga aqui"}
+
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          accept(e.dataTransfer.files?.[0]);
+        }}
+        className={[
+          "h-[300px] border-[1.5px] border-dashed rounded-lg overflow-hidden",
+          "flex flex-col items-center justify-center gap-3 bg-bg text-center px-6",
+          "transition-colors",
+          dragging ? "border-pine" : "border-border2",
+        ].join(" ")}
+      >
+        {image ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`data:${image.media};base64,${image.base64}`}
+              alt={`Print da vaga: ${image.name}`}
+              className="max-h-[170px] max-w-full object-contain rounded-md border border-border"
+            />
+            <span className="flex items-center gap-[9px] bg-surface border border-border rounded-[7px] px-[11px] py-2 max-w-full">
+              <IconImage size={16} />
+              <span className="text-[12.5px] font-medium truncate">{image.name}</span>
+              <span className="font-mono text-[10.5px] text-faint shrink-0">
+                {Math.round(image.size / 1024)} KB
+              </span>
+              <button
+                onClick={onClear}
+                aria-label="Remover o print"
+                className="text-muted hover:text-ink transition-colors cursor-pointer shrink-0"
+              >
+                <IconClose size={14} />
+              </button>
+            </span>
+            <button
+              onClick={() => inputRef.current?.click()}
+              className="text-[12.5px] text-pine font-medium cursor-pointer bg-transparent border-none hover:underline"
+            >
+              Trocar o print
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => inputRef.current?.click()}
+            className="flex flex-col items-center gap-3 bg-transparent border-none cursor-pointer text-center"
+          >
+            <IconImage size={34} />
+            <span className="text-sm font-medium text-ink">
+              Arraste o print da vaga aqui ou clique para escolher
+            </span>
+            <span className="text-[12.5px] text-muted max-w-[260px] leading-[1.5]">
+              A gente lê a imagem e extrai empresa, cargo, stack e o e-mail de
+              contato.
+            </span>
+            <span className="font-mono text-[11.5px] text-faint">
+              PNG, JPG, WEBP ou GIF · até 4 MB
+            </span>
+          </button>
+        )}
       </div>
-      <div className="text-[12.5px] text-muted max-w-[260px] leading-[1.5]">
-        A gente lê a imagem e extrai empresa, cargo, stack e o e-mail de contato.
-      </div>
-    </label>
+
+      {error && (
+        <p role="alert" className="text-[13px] text-clay leading-[1.5] mt-3">
+          {error}
+        </p>
+      )}
+    </>
   );
 }
 
